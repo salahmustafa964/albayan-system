@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تسجيل الدخول | البيان للتسويق</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="login-wrap">
+  <form class="login-card" id="form">
+    <img src="logo.jpg" alt="شعار البيان للتسويق">
+    <h1>البيان للتسويق</h1>
+    <p>نظام إدارة المخزون والمبيعات والأرباح</p>
+    <div class="error" id="err"></div>
+    <div class="field">
+      <label for="email">البريد الإلكتروني</label>
+      <input id="email" type="email" required autocomplete="username" dir="ltr">
+    </div>
+    <div class="field">
+      <label for="pass">كلمة المرور</label>
+      <input id="pass" type="password" required autocomplete="current-password" dir="ltr">
+    </div>
+    <button class="btn" id="btn" type="submit">تسجيل الدخول</button>
+  </form>
+</div>
+
+<script type="module">
+import { login, logout, getCurrentUser } from './firebase-init.js';
+
+const $ = id => document.getElementById(id);
+const showErr = m => { $('err').textContent = m; $('err').style.display = 'block'; };
+
+// لو المستخدم مسجّل دخوله مسبقاً ننقله مباشرة
+getCurrentUser().then(u => { if (u) location.replace('index.html'); });
+
+$('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('err').style.display = 'none';
+  $('btn').disabled = true;
+  $('btn').textContent = 'جارٍ الدخول...';
+  try {
+    await login($('email').value.trim(), $('pass').value);
+    const user = await getCurrentUser();
+    if (!user) {                      // لا توجد وثيقة في users أو الحساب غير مفعّل
+      await logout();
+      showErr('هذا الحساب غير مفعّل في النظام. تواصل مع مدير النظام.');
+    } else {
+      location.replace('index.html');
+    }
+  } catch (err) {
+    const map = {
+      'auth/invalid-credential': 'البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+      'auth/invalid-email': 'صيغة البريد الإلكتروني غير صحيحة.',
+      'auth/too-many-requests': 'محاولات كثيرة، انتظر قليلاً ثم أعد المحاولة.',
+      'auth/network-request-failed': 'تعذّر الاتصال بالإنترنت.'
+    };
+    showErr(map[err.code] || 'حدث خطأ غير متوقع، حاول مرة أخرى.');
+  } finally {
+    $('btn').disabled = false;
+    $('btn').textContent = 'تسجيل الدخول';
+  }
+});
+</script>
+</body>
+</html>

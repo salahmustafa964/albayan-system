@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>البيان للتسويق | لوحة التحكم</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="القائمة">☰</button>
+  <img src="logo.jpg" alt="شعار البيان للتسويق">
+  <span class="brand" id="brand">البيان للتسويق</span>
+  <span class="spacer"></span>
+  <span class="user-box"><span id="uname"></span> <small id="urole"></small></span>
+  <button class="btn btn-light" id="logoutBtn">خروج</button>
+</header>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <!-- يُملأ حسب صلاحيات المستخدم -->
+  </nav>
+  <main id="content"><div class="loading">جارٍ التحميل...</div></main>
+</div>
+
+<script type="module">
+import { db, logout, getCurrentUser } from './firebase-init.js';
+import { doc, getDoc, getDocs, collection }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const roleNames = { admin: 'مدير النظام', manager: 'مشرف', cashier: 'بائع' };
+
+// الصفحات: roles = من يراها. الصفحات غير الجاهزة تظهر كـ "قريباً"
+const pages = [
+  { id: 'dashboard', title: 'لوحة التحكم', icon: '🏠', roles: ['admin','manager','cashier'] },
+  { id: 'products',  title: 'المنتجات والمخزن', icon: '📦', roles: ['admin','manager','cashier'] },
+  { id: 'purchases', title: 'المشتريات (الوارد)', icon: '🚚', roles: ['admin','manager'] },
+  { id: 'sales',     title: 'المبيعات', icon: '🧾', roles: ['admin','manager','cashier'] },
+  { id: 'reports',   title: 'التقارير والأرباح', icon: '📊', roles: ['admin','manager'] },
+  { id: 'audit',     title: 'سجل العمليات', icon: '🕒', roles: ['admin'] },
+  { id: 'users',     title: 'المستخدمون', icon: '👥', roles: ['admin'] }
+];
+
+const fmt = n => Number(n || 0).toLocaleString('ar-EG', { maximumFractionDigits: 2 });
+const todayKey = () => {                       // yyyy-mm-dd بالتوقيت المحلي
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
+let user, currency = 'ج.س';
+
+async function init() {
+  user = await getCurrentUser();
+  if (!user) return location.replace('login.html');      // حماية الصفحة
+
+  $('uname').textContent = user.fullName || user.email;
+  $('urole').textContent = '(' + (roleNames[user.role] || user.role) + ')';
+
+  // إعدادات الشركة (الاسم والعملة)
+  try {
+    const s = await getDoc(doc(db, 'company_settings', 'main'));
+    if (s.exists()) {
+      $('brand').textContent = s.data().nameAr || 'البيان للتسويق';
+      currency = s.data().currency || currency;
+    }
+  } catch (e) { /* نستخدم القيم الافتراضية */ }
+
+  // بناء القائمة الجانبية حسب الدور
+  $('sidebar').innerHTML = pages.filter(p => p.roles.includes(user.role))
+    .map(p => `<a data-page="${p.id}">${p.icon} ${p.title}</a>`).join('');
+  $('sidebar').addEventListener('click', e => {
+    const a = e.target.closest('a[data-page]');
+    if (a) { go(a.dataset.page); $('sidebar').classList.remove('open'); }
+  });
+
+  go('dashboard');
+}
+
+function go(id) {
+  document.querySelectorAll('.sidebar a').forEach(a => a.classList.toggle('active', a.dataset.page === id));
+  const page = pages.find(p => p.id === id);
+  if (id === 'dashboard') return renderDashboard();
+  $('content').innerHTML = `<h2>${page.title}</h2>
+    <div class="placeholder">هذه الصفحة قيد الإنشاء، وهي الخطوة القادمة في بناء النظام.</div>`;
+}
+
+async function renderDashboard() {
+  $('content').innerHTML = `<h2>لوحة التحكم</h2><div class="loading">جارٍ تحميل البيانات...</div>`;
+  let sales = 0, cost = 0, profit = 0, productsCount = 0, low = 0, showMoney = ['admin','manager'].includes(user.role);
+
+  try {
+    const ps = await getDocs(collection(db, 'products'));
+    ps.forEach(d => {
+      const p = d.data();
+      if (p.isActive === false) return;
+      productsCount++;
+      if ((p.currentQty || 0) <= (p.minQty || 0)) low++;
+    });
+  } catch (e) { console.error(e); }
+
+  if (showMoney) {
+    try {
+      const d = await getDoc(doc(db, 'dailyStats', todayKey()));
+      if (d.exists()) ({ totalSales: sales = 0, totalCost: cost = 0, netProfit: profit = 0 } = d.data());
+    } catch (e) { console.error(e); }
+  }
+
+  const money = v => `${fmt(v)} <small>${currency}</small>`;
+  $('content').innerHTML = `<h2>لوحة التحكم</h2>
+    <div class="cards">
+      ${showMoney ? `
+      <div class="stat"><small>مبيعات اليوم</small><b>${money(sales)}</b></div>
+      <div class="stat"><small>تكلفة اليوم</small><b>${money(cost)}</b></div>
+      <div class="stat profit"><small>صافي ربح اليوم</small><b>${money(profit)}</b></div>` : ''}
+      <div class="stat"><small>عدد المنتجات</small><b>${fmt(productsCount)}</b></div>
+      <div class="stat warn"><small>أصناف أوشكت على النفاد</small><b>${fmt(low)}</b></div>
+    </div>`;
+}
+
+$('menuBtn').onclick = () => $('sidebar').classList.toggle('open');
+$('logoutBtn').onclick = async () => { await logout(); location.replace('login.html'); };
+
+init();
+</script>
+</body>
+</html>
