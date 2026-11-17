@@ -82,6 +82,11 @@ function go(id) {
   document.querySelectorAll('.sidebar a').forEach(a => a.classList.toggle('active', a.dataset.page === id));
   const page = pages.find(p => p.id === id);
   if (id === 'dashboard') return renderDashboard();
+  if (id === 'purchases') {
+    $('content').innerHTML = '<div class="loading">جارٍ التحميل...</div>';
+    return import('./purchases.js').then(m => m.renderPurchases({ container: $('content'), user, currency }))
+      .catch(e => { console.error(e); $('content').innerHTML = '<div class="placeholder">تعذّر تحميل الصفحة.</div>'; });
+  }
   if (id === 'products') {
     $('content').innerHTML = '<div class="loading">جارٍ التحميل...</div>';
     return import('./products.js').then(m => m.renderProducts({ container: $('content'), user, currency }))

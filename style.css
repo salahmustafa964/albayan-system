@@ -91,3 +91,9 @@ ul.plain li{display:flex;justify-content:space-between;padding:.3rem 0;border-bo
 .toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--ok);color:#fff;padding:.7rem 1.2rem;border-radius:10px;z-index:99;font-weight:700}
 .toast.bad{background:var(--danger)}
 @media(max-width:600px){.grid2{grid-template-columns:1fr}}
+
+/* ---------- المشتريات: صفوف الأصناف ---------- */
+.irow{display:grid;grid-template-columns:2fr 1fr 1fr auto auto;gap:.4rem;align-items:center;margin-bottom:.5rem}
+.irow select,.irow input{padding:.6rem;border:1px solid var(--line);border-radius:8px;width:100%;min-width:0;background:#fcfdfd}
+.irow .lt{min-width:56px;text-align:center;font-weight:700;color:var(--teal-dark)}
+@media(max-width:600px){.irow{grid-template-columns:1fr 1fr}.irow select{grid-column:1/-1}}

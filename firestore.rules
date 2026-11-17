@@ -1,0 +1,112 @@
+rules_version = '2';
+// البيان للتسويق | قواعد أمان Firestore
+// الأدوار: admin (مدير النظام) / manager (مشرف) / cashier (بائع)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- دوال مساعدة ----------
+    function signedIn() {
+      return request.auth != null;
+    }
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function hasRole(roles) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc().isActive == true
+        && userDoc().role in roles;
+    }
+    function isStaff()   { return hasRole(['admin', 'manager', 'cashier']); }
+    function isManager() { return hasRole(['admin', 'manager']); }
+    function isAdmin()   { return hasRole(['admin']); }
+
+    // ---------- المستخدمون ----------
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // ---------- إعدادات الشركة ----------
+    match /company_settings/{doc} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    // ---------- بيانات مرجعية ----------
+    match /categories/{id} {
+      allow read: if isStaff();
+      allow write: if isManager();
+    }
+    match /units/{id} {
+      allow read: if isStaff();
+      allow write: if isManager();
+    }
+    match /suppliers/{id} {
+      allow read: if isStaff();
+      allow write: if isManager();
+    }
+    match /customers/{id} {
+      allow read: if isStaff();
+      allow create, update: if isStaff();
+      allow delete: if isManager();
+    }
+
+    // ---------- المنتجات ----------
+    match /products/{id} {
+      allow read: if isStaff();
+      allow create: if isManager();
+      // المشرف: تعديل كامل. البائع: يعدّل الكمية فقط (أثناء البيع)
+      allow update: if isManager()
+        || (isStaff() && request.resource.data.diff(resource.data)
+              .affectedKeys().hasOnly(['currentQty', 'updatedAt']));
+      allow delete: if false;   // نخفي المنتج (isActive) ولا نحذفه
+
+      // سجل تغيّر الأسعار: إضافة فقط
+      match /priceHistory/{hid} {
+        allow read: if isManager();
+        allow create: if isManager();
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------- المشتريات ----------
+    match /purchases/{id} {
+      allow read: if isManager();
+      allow create: if isManager();
+      allow update, delete: if false;
+    }
+
+    // ---------- المبيعات ----------
+    match /sales/{id} {
+      allow read: if isStaff();
+      allow create: if isStaff()
+        && request.resource.data.createdBy == request.auth.uid;
+      // الإلغاء فقط (تغيير الحالة) وللمشرف
+      allow update: if isManager()
+        && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['status', 'cancelledAt', 'cancelledBy']);
+      allow delete: if false;
+    }
+
+    // ---------- دفتر المخزون والمراجعة: إضافة فقط ----------
+    match /stockMovements/{id} {
+      allow read: if isManager();
+      allow create: if isStaff();
+      allow update, delete: if false;
+    }
+    match /auditLog/{id} {
+      allow read: if isAdmin();
+      allow create: if isStaff();
+      allow update, delete: if false;
+    }
+
+    // ---------- ملخصات التقارير اليومية ----------
+    match /dailyStats/{day} {
+      allow read: if isManager();
+      allow create, update: if isStaff();
+      allow delete: if false;
+    }
+  }
+}
