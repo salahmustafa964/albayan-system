@@ -87,6 +87,11 @@ function go(id) {
     return import('./purchases.js').then(m => m.renderPurchases({ container: $('content'), user, currency }))
       .catch(e => { console.error(e); $('content').innerHTML = '<div class="placeholder">تعذّر تحميل الصفحة.</div>'; });
   }
+  if (id === 'sales') {
+    $('content').innerHTML = '<div class="loading">جارٍ التحميل...</div>';
+    return import('./sales.js').then(m => m.renderSales({ container: $('content'), user, currency }))
+      .catch(e => { console.error(e); $('content').innerHTML = '<div class="placeholder">تعذّر تحميل الصفحة.</div>'; });
+  }
   if (id === 'products') {
     $('content').innerHTML = '<div class="loading">جارٍ التحميل...</div>';
     return import('./products.js').then(m => m.renderProducts({ container: $('content'), user, currency }))
