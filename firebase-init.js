@@ -14,7 +14,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // إعدادات مشروع Firebase الخاص بـ البيان للتسويق (al-buan)
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey:            "AIzaSyArIbWoGUgpoqQ1gUGR3yCcAuVzAKU9CK4",
   authDomain:        "al-buan.firebaseapp.com",
   projectId:         "al-buan",
