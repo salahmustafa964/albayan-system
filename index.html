@@ -9,7 +9,7 @@
 </head>
 <body>
 <header class="topbar">
-  <button class="menu-btn" id="menuBtn" aria-label="القائمة">☰</button>
+  <button class="menu-btn" id="menuBtn" aria-label="إخفاء أو إظهار القائمة" aria-expanded="true">☰ <span>القائمة</span></button>
   <img src="logo.jpg" alt="شعار البيان للتسويق">
   <span class="brand" id="brand">البيان للتسويق</span>
   <span class="spacer"></span>
@@ -144,7 +144,19 @@ async function renderDashboard() {
   if ($('qBuy')) $('qBuy').onclick = () => go('purchases');
 }
 
-$('menuBtn').onclick = () => $('sidebar').classList.toggle('open');
+// زر القائمة: على الشاشات الكبيرة يخفي القائمة الجانبية ويظهرها (ويتذكر اختيارك)، وعلى الجوال يفتح ويقفل القائمة
+const wide = window.matchMedia('(min-width: 861px)');
+const NAV_KEY = 'bayan_nav_hidden';
+const setNav = hidden => {
+  document.body.classList.toggle('nav-hidden', hidden);
+  $('menuBtn').setAttribute('aria-expanded', String(!hidden));
+  try { localStorage.setItem(NAV_KEY, hidden ? '1' : '0'); } catch (e) { /* التخزين غير متاح */ }
+};
+try { if (wide.matches && localStorage.getItem(NAV_KEY) === '1') setNav(true); } catch (e) { /* تجاهل */ }
+$('menuBtn').onclick = () => {
+  if (wide.matches) setNav(!document.body.classList.contains('nav-hidden'));
+  else $('sidebar').classList.toggle('open');
+};
 $('logoutBtn').onclick = async () => { await logout(); location.replace('login.html'); };
 
 init();

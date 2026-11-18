@@ -114,8 +114,9 @@ export async function renderProducts({ container, user, currency }) {
         <div class="field"><label>سعر الشراء</label><input name="purchasePrice" type="number" step="any" min="0" value="${p?.purchasePrice ?? 0}"></div>
         <div class="field"><label>سعر البيع</label><input name="sellPrice" type="number" step="any" min="0" value="${p?.sellPrice ?? 0}"></div>
         <div class="field"><label>حد التنبيه (أقل كمية)</label><input name="minQty" type="number" step="any" min="0" value="${p?.minQty ?? 0}"></div>
-        ${p ? `<div class="field"><label>الرصيد الحالي</label><input value="${fmt(p.currentQty)}" disabled></div>`
-            : `<div class="field"><label>رصيد افتتاحي</label><input name="openingQty" type="number" step="any" min="0" value="0"></div>`}
+        ${p ? `<div class="field"><label>الكمية الحالية</label><input value="${fmt(p.currentQty)}" disabled></div>`
+            : `<div class="field"><label>الكمية</label><input name="openingQty" type="number" step="any" min="0" value="0">
+              <small class="muted">الكمية الموجودة عندك الآن، وتنقص تلقائياً مع كل بيع.</small></div>`}
       </div>
       <div class="modal-acts"><button class="btn" type="submit">حفظ</button>
         <button class="btn btn-light" type="button" id="cx">إلغاء</button></div></form>`);

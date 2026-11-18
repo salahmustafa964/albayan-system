@@ -62,7 +62,8 @@ small{font-size:.85em}
 .spacer{flex:1}
 .user-box{color:var(--muted);text-align:left;line-height:1.4}
 .user-box b{color:var(--ink);display:block}
-.menu-btn{display:none;background:var(--water);border:0;border-radius:12px;width:3rem;height:3rem;font-size:1.6rem;cursor:pointer;color:var(--deep)}
+.menu-btn{display:inline-flex;align-items:center;gap:.5rem;background:var(--water);border:1px solid var(--line);border-radius:12px;min-height:3rem;padding:0 1rem;font-size:1.05rem;font-weight:600;cursor:pointer;color:var(--deep)}
+.menu-btn:hover{background:#d3eaec}
 .layout{display:flex;min-height:calc(100vh - 79px)}
 .sidebar{width:270px;background:var(--deep);padding:1.2rem .8rem;flex-shrink:0}
 .sidebar a{display:block;padding:.85rem 1.1rem;border-radius:14px;color:#d3ebed;text-decoration:none;cursor:pointer;margin-bottom:.3rem;font-weight:500;font-size:1.1rem}
@@ -150,7 +151,6 @@ ul.plain li{display:flex;justify-content:space-between;align-items:center;paddin
 
 /* ---------- الجوال ---------- */
 @media(max-width:860px){
-  .menu-btn{display:block}
   .sidebar{position:fixed;top:79px;bottom:0;right:0;z-index:30;transform:translateX(105%);transition:transform .2s;width:285px;overflow:auto}
   .sidebar.open{transform:none}
   .user-box small,.user-box span{display:none}
@@ -172,3 +172,10 @@ ul.plain li{display:flex;justify-content:space-between;align-items:center;paddin
   .stat,.table-wrap{border-color:#bbb;break-inside:avoid}
   .stat.profit{background:#fff;color:#000;border-color:#000}.stat.profit small{color:#333}
 }
+
+/* إخفاء القائمة الجانبية على الشاشات الكبيرة */
+@media(min-width:861px){
+  body.nav-hidden .sidebar{display:none}
+  body.nav-hidden main{margin-inline:auto}
+}
+@media(max-width:620px){.menu-btn span{display:none}.menu-btn{padding:0 .9rem}}
