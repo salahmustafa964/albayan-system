@@ -97,3 +97,18 @@ ul.plain li{display:flex;justify-content:space-between;padding:.3rem 0;border-bo
 .irow select,.irow input{padding:.6rem;border:1px solid var(--line);border-radius:8px;width:100%;min-width:0;background:#fcfdfd}
 .irow .lt{min-width:56px;text-align:center;font-weight:700;color:var(--teal-dark)}
 @media(max-width:600px){.irow{grid-template-columns:1fr 1fr}.irow select{grid-column:1/-1}}
+
+/* ---------- التقارير ---------- */
+.rep-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin:1.4rem 0 .6rem}
+.rep-head h3{color:var(--teal-dark)}
+.bar{position:relative;height:12px;background:var(--teal-light);border-radius:6px;min-width:110px;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:#8fd3d8}
+.bar b{position:absolute;inset:0 auto 0 0;background:var(--ok)}
+tr.sum td{background:var(--teal-light);font-weight:800}
+.print-only{display:none}
+.prt-head{align-items:center;gap:14px;border-bottom:2px solid var(--teal);padding-bottom:10px;margin-bottom:12px}
+.prt-head img{height:70px}.prt-head h1{color:var(--teal-dark);font-size:1.4rem}
+@media print{
+  .print-only{display:flex}.noprint,.toolbar{display:none!important}
+  body{background:#fff}main{padding:0}.stat,.table-wrap{border-color:#bbb;break-inside:avoid}
+}
