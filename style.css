@@ -1,6 +1,6 @@
 /* ============================================================
    البيان للتسويق | نظام المخزون والمبيعات والأرباح
-   خط العناوين: Cairo | خط النصوص والأرقام: Readex Pro
+   الخط: Cairo (خط واحد خفيف للعناوين والنصوص والأرقام)
    الأرقام لاتينية (0-9) وبخط واضح، والتنقل عبر تبويبات علوية
    ============================================================ */
 :root{
@@ -8,12 +8,12 @@
   --brand:#0e7c86; --brand-dark:#085c64; --brand-soft:#e0f0f1;
   --line:#d3dfe1; --line-strong:#9db5b9;
   --green:#12794c; --green-soft:#e3f5ec; --red:#c0302e; --red-soft:#fbe7e6; --amber:#a95f00; --amber-soft:#fff3dc;
-  --font-head:'Cairo','Readex Pro',Tahoma,sans-serif;
-  --font-body:'Readex Pro','Cairo',Tahoma,Arial,sans-serif;
+  --font-head:'Cairo',Tahoma,Arial,sans-serif;
+  --font-body:'Cairo',Tahoma,Arial,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{direction:rtl;font-size:112.5%}
-body{font-family:var(--font-body);font-size:1rem;line-height:1.75;background:var(--bg);color:var(--ink);min-height:100vh;
+body{font-family:var(--font-body);font-size:1rem;font-weight:500;line-height:1.75;background:var(--bg);color:var(--ink);min-height:100vh;
   font-variant-numeric:lining-nums tabular-nums;-webkit-font-smoothing:antialiased}
 h1,h2,h3{font-family:var(--font-head);font-weight:800;line-height:1.4}
 button,input,select{font-family:inherit;font-size:1rem;color:inherit}
@@ -66,6 +66,9 @@ main{padding:1.8rem 1.4rem 3rem;max-width:1240px;margin:0 auto}
 main h2{font-size:2.1rem;margin-bottom:1.3rem;position:relative;padding-bottom:.6rem}
 main h2::after{content:"";position:absolute;right:0;bottom:0;width:64px;height:5px;background:var(--brand);border-radius:3px}
 .loading,.placeholder{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:1.1rem}
+.loading::before{content:"";display:inline-block;width:1.1em;height:1.1em;border:3px solid var(--line-strong);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;margin-inline-end:.6rem;vertical-align:-.2em}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.loading::before{animation:none}}
 .placeholder{background:#fff;border:2px dashed var(--line-strong);border-radius:12px}
 .muted{color:var(--muted);font-size:.92rem;margin-top:.6rem}
 
@@ -74,6 +77,7 @@ main h2::after{content:"";position:absolute;right:0;bottom:0;width:64px;height:5
 .eq-cell{background:#fff;border:1px solid var(--line);border-top:6px solid var(--brand);border-radius:12px;padding:1rem 1.2rem;min-width:0}
 .eq-cell:nth-of-type(2){border-top-color:#6b7f83}
 .eq-cell span{display:block;color:var(--muted);font-weight:500}
+.dots{color:var(--line-strong)}
 .eq-cell b{display:block;font-family:var(--font-head);font-size:2.3rem;font-weight:800;line-height:1.5;word-break:break-word}
 .eq-cell b small{font-family:var(--font-body);font-size:.95rem;color:var(--muted);font-weight:500}
 .eq-cell.result{background:var(--green-soft);border-color:#a9d9c1;border-top-color:var(--green)}
@@ -103,7 +107,7 @@ main h2::after{content:"";position:absolute;right:0;bottom:0;width:64px;height:5
 .toolbar input[type=date]{flex:none;width:auto}
 .table-wrap{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:12px}
 table{width:100%;border-collapse:collapse;min-width:560px}
-th,td{padding:.85rem 1rem;text-align:right;border-bottom:1px solid var(--line);font-size:1.03rem}
+th,td{padding:.85rem 1rem;text-align:right;overflow-wrap:anywhere;border-bottom:1px solid var(--line);font-size:1.03rem}
 th{background:#e9f0f1;color:var(--ink);font-weight:700;white-space:nowrap;border-bottom:2px solid var(--line-strong)}
 tbody tr:hover{background:#f6fafb}
 tr:last-child td{border-bottom:0}

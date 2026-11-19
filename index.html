@@ -4,8 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>البيان للتسويق | لوحة التحكم</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=Readex+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="style.css?v=15">
+<link rel="modulepreload" href="firebase-init.js">
+<link rel="modulepreload" href="store.js">
 </head>
 <body>
 <header class="topbar">
@@ -15,14 +19,13 @@
   <span class="user-box"><b id="uname"></b><small id="urole"></small></span>
   <button class="btn btn-light" id="logoutBtn">خروج</button>
 </header>
-
 <nav class="tabs" id="sidebar" aria-label="التنقل"></nav>
 <main id="content"><div class="loading">جارٍ التحميل...</div></main>
 
 <script type="module">
 import { db, logout, getCurrentUser } from './firebase-init.js';
-import { doc, getDoc, getDocs, collection }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
+import * as store from './store.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -40,108 +43,132 @@ const pages = [
   { id: 'users',     title: 'المستخدمون',         roles: ['admin'],                     mod: 'users',     fn: 'renderUsers' }
 ];
 
-const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const fmt = n => '\u200E' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 const todayKey = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
 
+// اسم الشركة والعملة: نعرض آخر قيمة محفوظة فوراً ثم نحدّثها في الخلفية
 let user, currency = 'ج.س';
+try {
+  const saved = JSON.parse(localStorage.getItem('bayan_company') || '{}');
+  if (saved.name) $('brand').textContent = saved.name;
+  if (saved.currency) currency = saved.currency;
+} catch (e) { /* تجاهل */ }
 
-async function init() {
-  user = await getCurrentUser();
-  if (!user) return location.replace('login.html');
-
+let started = false;
+function startApp() {
   $('uname').textContent = user.fullName || user.email;
   $('urole').textContent = roleNames[user.role] || user.role;
 
-  try {
-    const s = await getDoc(doc(db, 'company_settings', 'main'));
-    if (s.exists()) {
-      $('brand').textContent = s.data().nameAr || 'البيان للتسويق';
-      currency = s.data().currency || currency;
-    }
-  } catch (e) { /* قيم افتراضية */ }
-
-  $('sidebar').innerHTML = pages.filter(p => p.roles.includes(user.role))
-    .map(p => `<a data-page="${p.id}">${p.title}</a>`).join('');
-  $('sidebar').addEventListener('click', e => {
+  const allowed = pages.filter(p => p.roles.includes(user.role));
+  $('sidebar').innerHTML = allowed.map(p => `<a data-page="${p.id}">${p.title}</a>`).join('');
+  $('sidebar').onclick = e => {
     const a = e.target.closest('a[data-page]');
     if (a) go(a.dataset.page);
-  });
-  go('dashboard');
+  };
+  go('dashboard');                                   // الشاشة تظهر فوراً، والأرقام تُملأ بعدها
+  if (started) return;
+  started = true;
+
+  // في الخلفية: إعدادات الشركة، وتحميل البيانات والصفحات مسبقاً ليكون التنقل فورياً
+  getDoc(doc(db, 'company_settings', 'main')).then(s => {
+    if (!s.exists()) return;
+    const d = s.data();
+    $('brand').textContent = d.nameAr || 'البيان للتسويق';
+    currency = d.currency || currency;
+    try { localStorage.setItem('bayan_company', JSON.stringify({ name: d.nameAr, currency })); } catch (e) { /* تجاهل */ }
+  }).catch(() => {});
+  store.prefetch('products', 'categories', 'units', 'customers');
+  setTimeout(() => allowed.filter(p => p.mod).forEach(p => import(`./${p.mod}.js?v=15`).catch(() => {})), 600);
+}
+
+async function init() {
+  // نعرض الشاشة فوراً من آخر دخول في هذه الجلسة، ثم نتحقق من الحساب في الخلفية
+  let cached = null;
+  try { cached = JSON.parse(sessionStorage.getItem('bayan_user') || 'null'); } catch (e) { /* تجاهل */ }
+  if (cached && cached.uid && cached.role) { user = cached; startApp(); }
+
+  const u = await getCurrentUser();
+  if (!u) { try { sessionStorage.removeItem('bayan_user'); } catch (e) { /* تجاهل */ } return location.replace('login.html'); }
+  try { sessionStorage.setItem('bayan_user', JSON.stringify({ uid: u.uid, email: u.email, fullName: u.fullName, role: u.role, isActive: true })); } catch (e) { /* تجاهل */ }
+  if (!cached || cached.uid !== u.uid || cached.role !== u.role) { user = u; startApp(); } else { user = u; }
 }
 
 function go(id) {
   const page = pages.find(p => p.id === id);
   if (!page || !page.roles.includes(user.role)) return;
-  document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.page === id; a.classList.toggle('active', on); if (on) a.scrollIntoView({ inline: 'center', block: 'nearest' }); });
+  document.querySelectorAll('.tabs a').forEach(a => {
+    const on = a.dataset.page === id;
+    a.classList.toggle('active', on);
+    if (on) a.scrollIntoView({ inline: 'center', block: 'nearest' });
+  });
   window.scrollTo(0, 0);
   if (id === 'dashboard') return renderDashboard();
   $('content').innerHTML = '<div class="loading">جارٍ التحميل...</div>';
-  import(`./${page.mod}.js`)
+  import(`./${page.mod}.js?v=15`)
     .then(m => m[page.fn]({ container: $('content'), user, currency }))
     .catch(e => { console.error(e); $('content').innerHTML = '<div class="placeholder">تعذّر تحميل الصفحة. حدّث الصفحة وحاول مرة أخرى.</div>'; });
 }
 
-async function renderDashboard() {
+function renderDashboard() {
   const showMoney = ['admin', 'manager'].includes(user.role);
-  $('content').innerHTML = '<h2>لوحة التحكم</h2><div class="loading">جارٍ تحميل بيانات اليوم...</div>';
-  let sales = 0, cost = 0, profit = 0, invoices = 0, count = 0;
-  const low = [];
-
-  try {
-    const ps = await getDocs(collection(db, 'products'));
-    ps.forEach(d => {
-      const p = d.data();
-      if (p.isActive === false) return;
-      count++;
-      if ((p.currentQty || 0) <= (p.minQty || 0)) low.push(p);
-    });
-    low.sort((a, b) => (a.currentQty || 0) - (b.currentQty || 0));
-  } catch (e) { console.error(e); }
-
-  if (showMoney) {
-    try {
-      const d = await getDoc(doc(db, 'dailyStats', todayKey()));
-      if (d.exists()) ({ totalSales: sales = 0, totalCost: cost = 0, netProfit: profit = 0, invoicesCount: invoices = 0 } = d.data());
-    } catch (e) { console.error(e); }
-  }
-
-  const money = v => `${fmt(v)} <small>${esc(currency)}</small>`;
+  const cur = `<small>${esc(currency)}</small>`;
   const today = new Date().toLocaleDateString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const dots = '<span class="dots">…</span>';
 
+  // الهيكل يظهر فوراً
   $('content').innerHTML = `<h2>لوحة التحكم</h2>
     <p class="muted" style="margin:-.6rem 0 1.2rem">${today}</p>
     ${showMoney ? `
     <section class="eq" aria-label="أرباح اليوم">
-      <div class="eq-cell"><span>مبيعات اليوم</span><b>${money(sales)}</b></div>
+      <div class="eq-cell"><span>مبيعات اليوم</span><b id="eqS">${dots}</b></div>
       <div class="eq-op" aria-hidden="true">−</div>
-      <div class="eq-cell"><span>تكلفة البضاعة المباعة</span><b>${money(cost)}</b></div>
+      <div class="eq-cell"><span>تكلفة البضاعة المباعة</span><b id="eqC">${dots}</b></div>
       <div class="eq-op" aria-hidden="true">=</div>
-      <div class="eq-cell result"><span>صافي ربح اليوم</span><b>${money(profit)}</b></div>
+      <div class="eq-cell result"><span>صافي ربح اليوم</span><b id="eqP">${dots}</b></div>
     </section>` : ''}
     <div class="tiles">
-      ${showMoney ? `<div class="tile"><span>فواتير اليوم</span><b>${fmt(invoices)}</b></div>` : ''}
-      <div class="tile"><span>عدد المنتجات</span><b>${fmt(count)}</b></div>
-      <div class="tile ${low.length ? 'alert' : ''}"><span>أصناف تحتاج توريداً</span><b>${fmt(low.length)}</b></div>
+      ${showMoney ? `<div class="tile"><span>فواتير اليوم</span><b id="tInv">${dots}</b></div>` : ''}
+      <div class="tile"><span>عدد المنتجات</span><b id="tCnt">${dots}</b></div>
+      <div class="tile" id="tLowBox"><span>أصناف تحتاج توريداً</span><b id="tLow">${dots}</b></div>
     </div>
     <div class="quick">
       <button class="btn" id="qSale">فاتورة بيع جديدة</button>
       ${showMoney ? '<button class="btn btn-light" id="qBuy">تسجيل شحنة واردة</button>' : ''}
     </div>
-    ${low.length ? `<h3 class="sec-title">أصناف وصلت لحد التنبيه</h3>
+    <div id="lowList"></div>`;
+  $('qSale').onclick = () => go('sales');
+  if ($('qBuy')) $('qBuy').onclick = () => go('purchases');
+
+  const money = v => `${fmt(v)} ${cur}`;
+  const set = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
+
+  // أرقام اليوم (مستند واحد)
+  if (showMoney) {
+    getDoc(doc(db, 'dailyStats', todayKey())).then(d => {
+      const x = d.exists() ? d.data() : {};
+      set('eqS', money(x.totalSales)); set('eqC', money(x.totalCost)); set('eqP', money(x.netProfit)); set('tInv', fmt(x.invoicesCount));
+    }).catch(e => { console.error(e); ['eqS', 'eqC', 'eqP', 'tInv'].forEach(i => set(i, '—')); });
+  }
+
+  // المنتجات (من الذاكرة المؤقتة إن وُجدت)
+  store.load('products').then(all => {
+    const act = all.filter(p => p.isActive !== false);
+    const low = act.filter(p => (p.currentQty || 0) <= (p.minQty || 0)).sort((a, b) => (a.currentQty || 0) - (b.currentQty || 0));
+    set('tCnt', fmt(act.length)); set('tLow', fmt(low.length));
+    if ($('tLowBox') && low.length) $('tLowBox').classList.add('alert');
+    if (low.length) set('lowList', `<h3 class="sec-title">أصناف وصلت لحد التنبيه</h3>
       <div class="table-wrap"><table><thead><tr><th>المنتج</th><th>الرصيد</th><th>حد التنبيه</th></tr></thead><tbody>
       ${low.slice(0, 8).map(p => `<tr><td><b>${esc(p.name)}</b></td>
         <td><span class="badge low">${fmt(p.currentQty)}</span></td><td>${fmt(p.minQty)}</td></tr>`).join('')}
       </tbody></table></div>
-      ${low.length > 8 ? `<p class="muted">وأصناف أخرى (${fmt(low.length - 8)}) في صفحة المنتجات.</p>` : ''}` : ''}`;
-
-  $('qSale').onclick = () => go('sales');
-  if ($('qBuy')) $('qBuy').onclick = () => go('purchases');
+      ${low.length > 8 ? `<p class="muted">وأصناف أخرى (${fmt(low.length - 8)}) في صفحة المنتجات.</p>` : ''}`);
+  }).catch(e => { console.error(e); set('tCnt', '—'); set('tLow', '—'); });
 }
 
-$('logoutBtn').onclick = async () => { await logout(); location.replace('login.html'); };
+$('logoutBtn').onclick = async () => { try { sessionStorage.removeItem('bayan_user'); } catch (e) { /* تجاهل */ } await logout(); location.replace('login.html'); };
 
 init();
 </script>
