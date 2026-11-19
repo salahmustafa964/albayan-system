@@ -4,13 +4,14 @@
 // دقيقة دائماً حتى بعد الإلغاء. الصفحة للمدير والمشرف فقط.
 // ============================================================
 import { db } from './firebase-init.js';
+import * as store from './store.js';
 import { collection, getDocs, getDoc, doc, query, where }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
-const pct = (a, b) => b > 0 ? (a / b * 100).toLocaleString('en-US', { maximumFractionDigits: 1 }) + '%' : '—';
+const fmt = n => '\u200E' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });   // LRM: يمنع انقلاب علامة السالب في الجمل العربية
+const pct = (a, b) => b > 0 ? '\u200E' + (a / b * 100).toLocaleString('en-US', { maximumFractionDigits: 1 }) + '%' : '—';
 const pad = n => String(n).padStart(2, '0');
 const key = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -82,13 +83,13 @@ export async function renderReports({ container, user, currency }) {
       const [sSnap, pSnap, prodSnap] = await Promise.all([
         getDocs(query(collection(db, 'sales'), where('saleDate', '>=', from), where('saleDate', '<=', to))),
         getDocs(query(collection(db, 'purchases'), where('purchaseDate', '>=', from), where('purchaseDate', '<=', to))),
-        getDocs(collection(db, 'products'))
+        store.load('products')
       ]);
       data = {
         sales: sSnap.docs.map(d => d.data()).filter(s => s.status !== 'cancelled'),
         cancelled: sSnap.docs.filter(d => d.data().status === 'cancelled').length,
         purchases: pSnap.docs.map(d => d.data()),
-        products: prodSnap.docs.map(d => d.data()).filter(p => p.isActive !== false)
+        products: prodSnap.filter(p => p.isActive !== false)
       };
       paint();
     } catch (e) { console.error(e); $('out').innerHTML = '<div class="error" style="display:block">تعذّر تحميل التقرير. تأكد من اتصالك وصلاحياتك.</div>'; }

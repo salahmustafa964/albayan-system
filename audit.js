@@ -5,7 +5,7 @@
 // ============================================================
 import { db } from './firebase-init.js';
 import { collection, getDocs, query, where, orderBy, limit, Timestamp }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));

@@ -2,14 +2,15 @@
 // البيان للتسويق | صفحة المنتجات والمخزن
 // ============================================================
 import { db, serverTimestamp } from './firebase-init.js';
+import * as store from './store.js';
 import {
   collection, getDocs, doc, writeBatch, addDoc, deleteDoc,
   query, where, orderBy, limit
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const fmt = n => '\u200E' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });   // LRM: يمنع انقلاب علامة السالب في الجمل العربية
 const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-u-nu-latn') : '—';
 
@@ -37,8 +38,8 @@ export async function renderProducts({ container, user, currency }) {
   const unitName = id => units.find(u => u.id === id)?.name || '';
 
   async function load() {
-    container.innerHTML = '<div class="loading">جارٍ تحميل المنتجات...</div>';
-    const read = async n => (await getDocs(collection(db, n))).docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!store.has('categories', 'units', 'products')) container.innerHTML = '<div class="loading">جارٍ تحميل المنتجات...</div>';
+    const read = n => store.load(n);
     [cats, units, products] = await Promise.all([read('categories'), read('units'), read('products')]);
     products.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
     draw();
@@ -132,7 +133,7 @@ export async function renderProducts({ container, user, currency }) {
       };
       if (v.sellPrice < v.purchasePrice && !confirm('سعر البيع أقل من سعر الشراء، هل أنت متأكد؟')) return;
       const btn = e.target.querySelector('[type=submit]'); btn.disabled = true;
-      try { await save(p, v); m.remove(); toast('تم الحفظ'); await load(); }
+      try { await save(p, v); m.remove(); toast('تم الحفظ'); store.invalidate('products'); await load(); }
       catch (err) { const el = m.querySelector('#perr'); el.textContent = err.message || 'تعذّر الحفظ'; el.style.display = 'block'; btn.disabled = false; }
     };
   }
@@ -182,7 +183,7 @@ export async function renderProducts({ container, user, currency }) {
     b.update(doc(db, 'products', p.id), { isActive: !hide, updatedAt: serverTimestamp() });
     b.set(doc(collection(db, 'auditLog')), { ...by, action: hide ? 'hide' : 'unhide', entity: 'product',
       entityId: p.id, oldValues: { isActive: !hide }, newValues: { isActive: hide }, createdAt: serverTimestamp() });
-    try { await b.commit(); toast(hide ? 'تم الإخفاء' : 'تم الإظهار'); await load(); }
+    try { await b.commit(); toast(hide ? 'تم الإخفاء' : 'تم الإظهار'); store.invalidate('products'); await load(); }
     catch (e) { toast('تعذّر التنفيذ', true); }
   }
 
@@ -221,13 +222,13 @@ export async function renderProducts({ container, user, currency }) {
           const col = add.dataset.add, inp = m.querySelector(`[data-in="${col}"]`), name = inp.value.trim();
           if (!name) return;
           const ref = await addDoc(collection(db, col), { name, createdAt: serverTimestamp() });
-          (col === 'categories' ? cats : units).push({ id: ref.id, name }); paint();
+          (col === 'categories' ? cats : units).push({ id: ref.id, name }); store.invalidate(col); paint();
         }
         if (del && confirm('حذف هذا العنصر؟ (المنتجات المرتبطة به تبقى بدون تصنيف/وحدة)')) {
           await deleteDoc(doc(db, del.dataset.c, del.dataset.id));
           if (del.dataset.c === 'categories') cats = cats.filter(x => x.id !== del.dataset.id);
           else units = units.filter(x => x.id !== del.dataset.id);
-          paint();
+          store.invalidate(del.dataset.c); paint();
         }
       } catch (err) { toast('تعذّر التنفيذ', true); }
     });

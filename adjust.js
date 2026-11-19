@@ -5,12 +5,13 @@
 // واسم المستخدم والوقت، ولا تُعدَّل بعد حفظها.
 // ============================================================
 import { db, serverTimestamp } from './firebase-init.js';
+import * as store from './store.js';
 import { collection, getDocs, doc, runTransaction, query, where }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const fmt = n => '\u200E' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });   // LRM: يمنع انقلاب علامة السالب في الجمل العربية
 const num = v => { const n = parseFloat(v); return isNaN(n) ? NaN : n; };
 const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-u-nu-latn') : '—';
 
@@ -34,9 +35,8 @@ export async function renderAdjust({ container, user, currency }) {
   const unitName = id => units.find(u => u.id === id)?.name || '';
 
   async function load() {
-    container.innerHTML = '<div class="loading">جارٍ التحميل...</div>';
-    const read = async n => (await getDocs(collection(db, n))).docs.map(d => ({ id: d.id, ...d.data() }));
-    [products, units] = await Promise.all([read('products'), read('units')]);
+    if (!store.has('products', 'units')) container.innerHTML = '<div class="loading">جارٍ التحميل...</div>';
+    [products, units] = await Promise.all([store.load('products'), store.load('units')]);
     products = products.filter(p => p.isActive !== false).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
     const h = await getDocs(query(collection(db, 'stockMovements'), where('movementType', '==', 'adjust')));
     history = h.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -106,7 +106,7 @@ export async function renderAdjust({ container, user, currency }) {
       if (n === (p.currentQty || 0)) return err('الرصيد مطابق لما في النظام، لا حاجة لتسوية.');
       if (!confirm(`تسوية رصيد "${p.name}" إلى ${fmt(n)}؟ لا يمكن حذف التسوية بعد الحفظ.`)) return;
       $('sv').disabled = true; $('sv').textContent = 'جارٍ الحفظ...';
-      try { await save(p, n, reason, note); toast('تم حفظ التسوية'); await load(); }
+      try { await save(p, n, reason, note); toast('تم حفظ التسوية'); store.invalidate('products'); await load(); }
       catch (ex) { console.error(ex); err(ex.message || 'تعذّر حفظ التسوية.'); $('sv').disabled = false; $('sv').textContent = 'حفظ التسوية'; }
     };
   }

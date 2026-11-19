@@ -4,13 +4,14 @@
 // التكلفة، تسجّل حركة المخزن وتغيّر سعر الشراء، وتكتب سجل المراجعة.
 // ============================================================
 import { db, serverTimestamp } from './firebase-init.js';
+import * as store from './store.js';
 import {
   collection, getDocs, doc, addDoc, runTransaction, query, orderBy, limit
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const fmt = n => '\u200E' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });   // LRM: يمنع انقلاب علامة السالب في الجمل العربية
 const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 const round4 = n => Math.round(n * 10000) / 10000;
 const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-u-nu-latn') : '—';
@@ -43,7 +44,7 @@ export async function renderPurchases({ container, user, currency }) {
 
   async function load() {
     container.innerHTML = '<div class="loading">جارٍ تحميل المشتريات...</div>';
-    const read = async n => (await getDocs(collection(db, n))).docs.map(d => ({ id: d.id, ...d.data() }));
+    const read = n => store.load(n);
     [products, units, suppliers] = await Promise.all([read('products'), read('units'), read('suppliers')]);
     products = products.filter(p => p.isActive !== false).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
     suppliers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
@@ -103,7 +104,7 @@ export async function renderPurchases({ container, user, currency }) {
       try {
         const data = { name: f.get('name').trim(), phone: f.get('phone').trim(), address: f.get('address').trim(), createdAt: serverTimestamp() };
         const ref = await addDoc(collection(db, 'suppliers'), data);
-        suppliers.push({ id: ref.id, ...data });
+        suppliers.push({ id: ref.id, ...data }); store.invalidate('suppliers');
         suppliers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
         m.remove(); toast('تمت إضافة المورد');
         if (afterSave) afterSave(ref.id);
@@ -187,7 +188,7 @@ export async function renderPurchases({ container, user, currency }) {
           date: f.get('date'), refNo: f.get('refNo').trim(), notes: f.get('notes').trim(),
           supplierId: sup?.id || '', supplierName: sup?.name || '', items
         });
-        m.remove(); toast('تم تسجيل الشحنة وتحديث المخزون'); await load();
+        m.remove(); toast('تم تسجيل الشحنة وتحديث المخزون'); store.invalidate('products'); await load();
       } catch (ex) { console.error(ex); err(ex.message || 'تعذّر الحفظ'); btn.disabled = false; btn.textContent = 'حفظ الشحنة'; }
     };
   }

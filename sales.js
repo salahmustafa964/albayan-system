@@ -5,13 +5,14 @@
 // تحدّث ملخص اليوم، وتكتب حركة المخزن وسجل المراجعة.
 // ============================================================
 import { db, serverTimestamp } from './firebase-init.js';
+import * as store from './store.js';
 import {
   collection, getDocs, getDoc, doc, addDoc, runTransaction, increment, query, where
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-lite.js";
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const fmt = n => '\u200E' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });   // LRM: يمنع انقلاب علامة السالب في الجمل العربية
 const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 const r2 = n => Math.round(n * 100) / 100;
 const pad = n => String(n).padStart(2, '0');
@@ -39,6 +40,7 @@ function modal(html, wide) {
   return o;
 }
 
+let _company;   // إعدادات الشركة تُجلب مرة واحدة فقط
 export async function renderSales({ container, user, currency }) {
   const isMgr = ['admin', 'manager'].includes(user.role);
   const by = { userId: user.uid, userName: user.fullName || user.email };
@@ -46,11 +48,12 @@ export async function renderSales({ container, user, currency }) {
   let date = dayKey();
 
   async function loadBase() {
-    const read = async n => (await getDocs(collection(db, n))).docs.map(d => ({ id: d.id, ...d.data() }));
+    const read = n => store.load(n);
     [products, customers] = await Promise.all([read('products'), read('customers')]);
     products = products.filter(p => p.isActive !== false).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
     customers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
-    try { const c = await getDoc(doc(db, 'company_settings', 'main')); company = c.exists() ? c.data() : {}; } catch (e) { company = {}; }
+    if (!_company) { try { const c = await getDoc(doc(db, 'company_settings', 'main')); _company = c.exists() ? c.data() : {}; } catch (e) { _company = {}; } }
+    company = _company;
   }
   async function loadSales() {
     const s = await getDocs(query(collection(db, 'sales'), where('saleDate', '==', date)));
@@ -59,8 +62,8 @@ export async function renderSales({ container, user, currency }) {
   }
 
   async function start() {
-    container.innerHTML = '<div class="loading">جارٍ تحميل المبيعات...</div>';
-    await loadBase(); await loadSales(); draw();
+    if (!store.has('products', 'customers')) container.innerHTML = '<div class="loading">جارٍ تحميل المبيعات...</div>';
+    await Promise.all([loadBase(), loadSales()]); draw();
   }
 
   function draw() {
@@ -153,7 +156,7 @@ export async function renderSales({ container, user, currency }) {
       try {
         const data = { name: f.get('name').trim(), phone: f.get('phone').trim(), createdAt: serverTimestamp() };
         const ref = await addDoc(collection(db, 'customers'), data);
-        customers.push({ id: ref.id, ...data });
+        customers.push({ id: ref.id, ...data }); store.invalidate('customers');
         m.remove(); after(ref.id);
       } catch (x) { toast('تعذّر الحفظ', true); }
     };
@@ -237,7 +240,7 @@ export async function renderSales({ container, user, currency }) {
       try {
         const sale = await saveSale({ items, discount, notes: f.get('notes').trim(), customerId: cust?.id || '', customerName: cust?.name || '' });
         m.remove(); toast('تم حفظ الفاتورة');
-        await loadBase(); date = dayKey(); await loadSales(); draw();
+        store.invalidate('products'); date = dayKey(); await Promise.all([loadBase(), loadSales()]); draw();
         if (confirm('هل تريد طباعة الفاتورة؟')) printInvoice(sale);
       } catch (ex) { console.error(ex); err(ex.message || 'تعذّر الحفظ'); btn.disabled = false; btn.textContent = 'حفظ الفاتورة'; }
     };
@@ -319,7 +322,7 @@ export async function renderSales({ container, user, currency }) {
           oldValues: { status: 'completed' }, newValues: { status: 'cancelled', invoiceNo: s.invoiceNo }, createdAt: serverTimestamp() });
       });
       toast('تم إلغاء الفاتورة وإرجاع الكميات');
-      await loadBase(); await loadSales(); draw();
+      store.invalidate('products'); await Promise.all([loadBase(), loadSales()]); draw();
     } catch (e) { console.error(e); toast(e.message || 'تعذّر الإلغاء', true); }
   }
 
