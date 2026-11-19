@@ -9,12 +9,12 @@ import { collection, getDocs, getDoc, doc, query, where }
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const fmt = n => Number(n || 0).toLocaleString('ar-EG', { maximumFractionDigits: 2 });
-const pct = (a, b) => b > 0 ? (a / b * 100).toLocaleString('ar-EG', { maximumFractionDigits: 1 }) + '٪' : '—';
+const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+const pct = (a, b) => b > 0 ? (a / b * 100).toLocaleString('en-US', { maximumFractionDigits: 1 }) + '%' : '—';
 const pad = n => String(n).padStart(2, '0');
 const key = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
-const dateAr = s => parse(s).toLocaleDateString('ar-EG', { weekday: 'short', year: 'numeric', month: 'numeric', day: 'numeric' });
+const dateAr = s => parse(s).toLocaleDateString('ar-u-nu-latn', { weekday: 'short', year: 'numeric', month: 'numeric', day: 'numeric' });
 
 function toast(msg, bad) {
   const t = document.createElement('div');
@@ -98,7 +98,7 @@ export async function renderReports({ container, user, currency }) {
     if (group === 'day') return [saleDate, dateAr(saleDate)];
     if (group === 'week') { const w = key(weekStart(parse(saleDate))); return [w, 'أسبوع يبدأ ' + dateAr(w)]; }
     const [y, m] = saleDate.split('-');
-    return [`${y}-${m}`, new Date(+y, +m - 1, 1).toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })];
+    return [`${y}-${m}`, new Date(+y, +m - 1, 1).toLocaleDateString('ar-u-nu-latn', { month: 'long', year: 'numeric' })];
   }
 
   function paint() {

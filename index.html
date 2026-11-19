@@ -4,12 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>البيان للتسويق | لوحة التحكم</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=Readex+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="topbar">
-  <button class="menu-btn" id="menuBtn" aria-label="إخفاء أو إظهار القائمة" aria-expanded="true">☰ <span>القائمة</span></button>
   <img src="logo.jpg" alt="شعار البيان للتسويق">
   <span class="brand" id="brand">البيان للتسويق</span>
   <span class="spacer"></span>
@@ -17,10 +16,8 @@
   <button class="btn btn-light" id="logoutBtn">خروج</button>
 </header>
 
-<div class="layout">
-  <nav class="sidebar" id="sidebar"></nav>
-  <main id="content"><div class="loading">جارٍ التحميل...</div></main>
-</div>
+<nav class="tabs" id="sidebar" aria-label="التنقل"></nav>
+<main id="content"><div class="loading">جارٍ التحميل...</div></main>
 
 <script type="module">
 import { db, logout, getCurrentUser } from './firebase-init.js';
@@ -43,7 +40,7 @@ const pages = [
   { id: 'users',     title: 'المستخدمون',         roles: ['admin'],                     mod: 'users',     fn: 'renderUsers' }
 ];
 
-const fmt = n => Number(n || 0).toLocaleString('ar-EG', { maximumFractionDigits: 2 });
+const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 const todayKey = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -70,7 +67,7 @@ async function init() {
     .map(p => `<a data-page="${p.id}">${p.title}</a>`).join('');
   $('sidebar').addEventListener('click', e => {
     const a = e.target.closest('a[data-page]');
-    if (a) { go(a.dataset.page); $('sidebar').classList.remove('open'); }
+    if (a) go(a.dataset.page);
   });
   go('dashboard');
 }
@@ -78,7 +75,7 @@ async function init() {
 function go(id) {
   const page = pages.find(p => p.id === id);
   if (!page || !page.roles.includes(user.role)) return;
-  document.querySelectorAll('.sidebar a').forEach(a => a.classList.toggle('active', a.dataset.page === id));
+  document.querySelectorAll('.tabs a').forEach(a => { const on = a.dataset.page === id; a.classList.toggle('active', on); if (on) a.scrollIntoView({ inline: 'center', block: 'nearest' }); });
   window.scrollTo(0, 0);
   if (id === 'dashboard') return renderDashboard();
   $('content').innerHTML = '<div class="loading">جارٍ التحميل...</div>';
@@ -112,10 +109,10 @@ async function renderDashboard() {
   }
 
   const money = v => `${fmt(v)} <small>${esc(currency)}</small>`;
-  const today = new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const today = new Date().toLocaleDateString('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   $('content').innerHTML = `<h2>لوحة التحكم</h2>
-    <p class="muted" style="margin:-.8rem 0 1rem">${today}</p>
+    <p class="muted" style="margin:-.6rem 0 1.2rem">${today}</p>
     ${showMoney ? `
     <section class="eq" aria-label="أرباح اليوم">
       <div class="eq-cell"><span>مبيعات اليوم</span><b>${money(sales)}</b></div>
@@ -144,19 +141,6 @@ async function renderDashboard() {
   if ($('qBuy')) $('qBuy').onclick = () => go('purchases');
 }
 
-// زر القائمة: على الشاشات الكبيرة يخفي القائمة الجانبية ويظهرها (ويتذكر اختيارك)، وعلى الجوال يفتح ويقفل القائمة
-const wide = window.matchMedia('(min-width: 861px)');
-const NAV_KEY = 'bayan_nav_hidden';
-const setNav = hidden => {
-  document.body.classList.toggle('nav-hidden', hidden);
-  $('menuBtn').setAttribute('aria-expanded', String(!hidden));
-  try { localStorage.setItem(NAV_KEY, hidden ? '1' : '0'); } catch (e) { /* التخزين غير متاح */ }
-};
-try { if (wide.matches && localStorage.getItem(NAV_KEY) === '1') setNav(true); } catch (e) { /* تجاهل */ }
-$('menuBtn').onclick = () => {
-  if (wide.matches) setNav(!document.body.classList.contains('nav-hidden'));
-  else $('sidebar').classList.toggle('open');
-};
 $('logoutBtn').onclick = async () => { await logout(); location.replace('login.html'); };
 
 init();

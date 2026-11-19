@@ -10,11 +10,11 @@ import {
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const fmt = n => Number(n || 0).toLocaleString('ar-EG', { maximumFractionDigits: 2 });
+const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 const round4 = n => Math.round(n * 10000) / 10000;
-const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-EG') : '—';
-const dateAr = s => s ? new Date(s + 'T00:00:00').toLocaleDateString('ar-EG') : '—';
+const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-u-nu-latn') : '—';
+const dateAr = s => s ? new Date(s + 'T00:00:00').toLocaleDateString('ar-u-nu-latn') : '—';
 const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

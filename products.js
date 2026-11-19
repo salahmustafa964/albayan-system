@@ -9,9 +9,9 @@ import {
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const fmt = n => Number(n || 0).toLocaleString('ar-EG', { maximumFractionDigits: 2 });
+const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
-const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-EG') : '—';
+const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-u-nu-latn') : '—';
 
 function toast(msg, bad) {
   const t = document.createElement('div');

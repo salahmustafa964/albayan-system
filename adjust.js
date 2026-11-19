@@ -10,9 +10,9 @@ import { collection, getDocs, doc, runTransaction, query, where }
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const fmt = n => Number(n || 0).toLocaleString('ar-EG', { maximumFractionDigits: 2 });
+const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 const num = v => { const n = parseFloat(v); return isNaN(n) ? NaN : n; };
-const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-EG') : '—';
+const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-u-nu-latn') : '—';
 
 const REASONS = ['جرد فعلي', 'تلف', 'فقد أو سرقة', 'خطأ في إدخال شحنة', 'إرجاع للمورد', 'أخرى'];
 
@@ -52,7 +52,7 @@ export async function renderAdjust({ container, user, currency }) {
         <div class="field"><label>المنتج *</label><select id="ps" size="1"></select></div>
         <div class="grid2">
           <div class="field"><label>الرصيد الفعلي بعد العدّ *</label>
-            <input id="nq" type="number" step="any" min="0" inputmode="decimal" placeholder="مثال: ٤٨"></div>
+            <input id="nq" type="number" step="any" min="0" inputmode="decimal" placeholder="مثال: 48"></div>
           <div class="field"><label>سبب التسوية *</label>
             <select id="rs">${REASONS.map(r => `<option>${r}</option>`).join('')}</select></div>
         </div>

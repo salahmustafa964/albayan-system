@@ -11,7 +11,7 @@ import { collection, getDocs, doc, setDoc, writeBatch }
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-const when = ts => ts?.toDate ? ts.toDate().toLocaleDateString('ar-EG') : '—';
+const when = ts => ts?.toDate ? ts.toDate().toLocaleDateString('ar-u-nu-latn') : '—';
 const ROLES = { admin: 'مدير النظام', manager: 'مشرف', cashier: 'بائع' };
 const ROLE_HELP = {
   admin: 'كل الصلاحيات، منها المستخدمون وسجل العمليات',

@@ -11,7 +11,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g,
   c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const pad = n => String(n).padStart(2, '0');
 const key = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-EG') : '—';
+const when = ts => ts?.toDate ? ts.toDate().toLocaleString('ar-u-nu-latn') : '—';
 
 const ACTIONS = { create: 'إضافة', update: 'تعديل', hide: 'إخفاء', unhide: 'إظهار', cancel: 'إلغاء', adjust: 'تسوية', delete: 'حذف', login: 'دخول' };
 const ENTITIES = { product: 'منتج', purchase: 'شحنة شراء', sale: 'فاتورة بيع', user: 'مستخدم', stock: 'تسوية مخزون' };
